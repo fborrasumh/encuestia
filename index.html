@@ -4187,7 +4187,7 @@ function cifrasDeTablas(A) {
   A.preg.forEach(p => {
     v.push(p.n); if (p.tipo === 'escala') for (let k = p.esc[0]; k <= p.esc[1]; k++) v.push(k); (p.it || []).forEach(x => v.push(x.n, x.pct));
     if (p.num && p.num.n) v.push(p.num.media, p.num.mediana, p.num.de, p.num.min, p.num.max); if (p.top2 != null) v.push(p.top2);
-    [...(p.mom || []), ...(p.grp || [])].filter(g => !g.oculto).forEach(g => { v.push(g.n); (g.it || []).forEach(x => v.push(x.pct)); if (g.num) v.push(g.num.media); if (g.top2 != null) v.push(g.top2); });
+    [...(p.mom || []), ...(p.grp || [])].filter(g => !g.oculto).forEach(g => { v.push(g.n); (g.it || []).forEach(x => v.push(x.n, x.pct)); if (g.num) v.push(g.num.media); if (g.top2 != null) v.push(g.top2); });
     if (p.dif) { if (p.dif.media != null) v.push(Math.abs(p.dif.media)); if (p.dif.top2 != null) v.push(Math.abs(p.dif.top2)); }
     (S.ia?.temas?.[p.i]?.temas || []).forEach(tm => tm.n >= MIN_GRUPO && v.push(tm.n));
   });
@@ -4258,14 +4258,15 @@ ${tablas}
 Devuelve SOLO este JSON:
 {"resumen":"3-5 frases con lo más importante","comentarios":[{"id":número de la pregunta,"texto":"2-3 frases que interpretan la tabla de esa pregunta"}],"conclusiones":["…"],"limitaciones":["…"]}
 REGLAS
+- En "opciones", cada elemento es [opción, personas, porcentaje]. Puedes dar porcentajes o personas («34 de las 60 personas»), lo que se entienda mejor.
 - Usa SOLO cifras que estén en las tablas, escritas igual (con un decimal) o redondeadas a entero. No calcules cifras nuevas.
 - Los grupos marcados como ocultos tienen menos de 5 personas: no hables de ellos.
 - Si hay antes y después, recuerda que son respuestas de grupos, no necesariamente de las mismas personas, y que con pocas respuestas una diferencia puede deberse al azar.
 - Lenguaje claro, centrado en la persona y sin estigmatizar. Sin recomendaciones clínicas.
 ${INSTR_IDIOMA()}`;
 function tablasParaIA(A) {
-  const g = x => x.oculto ? {grupo: x.v, oculto: true} : {grupo: x.v, n: x.n, ...(x.num ? {media: +f1(x.num.media).replace(',', '.')} : {}), ...(x.top2 != null ? {pct_alto: +f1(x.top2).replace(',', '.')} : {}), porcentajes: (x.it || []).map(o => [o.v, +f1(o.pct).replace(',', '.')])};
-  return JSON.stringify({respuestas: A.n, momentos: A.momentos, preguntas: A.preg.filter(p => p.tipo !== 'abierta').map(p => ({id: p.i, pregunta: p.nombre, tipo: p.tipo, n: p.n, ...(p.esc && p.tipo === 'escala' ? {escala: p.esc} : {}), ...(p.num ? {media: +f1(p.num.media).replace(',', '.'), mediana: p.num.mediana} : {}), ...(p.top2 != null ? {pct_alto: +f1(p.top2).replace(',', '.')} : {}), ...(p.tipo === 'numero' ? {} : {porcentajes: (p.it || []).map(o => [o.v, +f1(o.pct).replace(',', '.')])}), ...(p.mom ? {antes_despues: p.mom.map(g)} : {}), ...(p.grp ? {por_grupo: p.grp.map(g)} : {})})),
+  const g = x => x.oculto ? {grupo: x.v, oculto: true} : {grupo: x.v, n: x.n, ...(x.num ? {media: +f1(x.num.media).replace(',', '.')} : {}), ...(x.top2 != null ? {pct_alto: +f1(x.top2).replace(',', '.')} : {}), opciones: (x.it || []).map(o => [o.v, o.n, +f1(o.pct).replace(',', '.')])};
+  return JSON.stringify({respuestas: A.n, momentos: A.momentos, preguntas: A.preg.filter(p => p.tipo !== 'abierta').map(p => ({id: p.i, pregunta: p.nombre, tipo: p.tipo, n: p.n, ...(p.esc && p.tipo === 'escala' ? {escala: p.esc} : {}), ...(p.num ? {media: +f1(p.num.media).replace(',', '.'), mediana: p.num.mediana} : {}), ...(p.top2 != null ? {pct_alto: +f1(p.top2).replace(',', '.')} : {}), ...(p.tipo === 'numero' ? {} : {opciones: (p.it || []).map(o => [o.v, o.n, +f1(o.pct).replace(',', '.')])}), ...(p.mom ? {antes_despues: p.mom.map(g)} : {}), ...(p.grp ? {por_grupo: p.grp.map(g)} : {})})),
     abiertas: A.preg.filter(p => p.tipo === 'abierta').map(p => ({id: p.i, pregunta: p.nombre, respuestas: p.n, temas: (S.ia?.temas?.[p.i]?.temas || []).map(tm => ({tema: tm.tema, respuestas: tm.n < MIN_GRUPO ? 'menos de 5' : tm.n}))}))}, null, 1);
 }
 function procesaTemas(raw, p) {
